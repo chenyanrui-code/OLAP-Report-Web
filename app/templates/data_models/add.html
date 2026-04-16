@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}添加数据模型 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('data_models.index') }}">数据模型管理</a></li>
+<li class="breadcrumb-item active">添加</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-plus-circle mr-2"></i>添加数据模型</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.name.label.text }}</label>
+                                {{ form.name(class="form-control", placeholder="请输入模型名称") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.data_source_id.label.text }}</label>
+                                {{ form.data_source_id(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>{{ form.table_name.label.text }}</label>
+                        {{ form.table_name(class="form-control") }}
+                    </div>
+                    
+                    <!-- 字段选择 -->
+                    <div class="form-group">
+                        <label>{{ form.fields.label.text }}</label>
+                        <div id="fields-container" class="border rounded p-3" style="min-height: 100px; background: #f8f9fc;">
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-info-circle mr-2"></i>请先选择数据源和表名
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据预览 -->
+                    <div class="form-group mt-4">
+                        <label><i class="fas fa-eye mr-2"></i>数据预览</label>
+                        <div id="data-preview" class="border rounded p-3" style="max-height: 400px; overflow-y: auto; background: #f8f9fc;">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-table fa-2x mb-3"></i>
+                                <p>选择表名后显示数据预览</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('data_models.index') }}" class="btn btn-secondary mr-2">
+                            <i class="fas fa-times mr-2"></i>取消
+                        </a>
+                        {{ form.submit(class="btn btn-success") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 当数据源变化时，加载表名
+    $('#data_source_id').on('change', function() {
+        var dataSourceId = $(this).val();
+        if (dataSourceId) {
+            $.ajax({
+                url: '{{ url_for('data_models.add') }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({data_source_id: dataSourceId}),
+                success: function(response) {
+                    var tableSelect = $('#table_name');
+                    tableSelect.empty();
+                    tableSelect.append('<option value="">请选择表名</option>');
+                    response.tables.forEach(function(table) {
+                        tableSelect.append($('<option>').text(table).val(table));
+                    });
+                }
+            });
+        }
+    });
+    
+    // 当表名变化时，加载字段和数据预览
+    $('#table_name').on('change', function() {
+        var tableName = $(this).val();
+        var dataSourceId = $('#data_source_id').val();
+        console.log('[DEBUG] 表名改变:', tableName, '数据源:', dataSourceId);
+        
+        if (tableName && dataSourceId) {
+            // 加载字段
+            $('#fields-container').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> 加载字段中...</div>');
+            
+            $.ajax({
+                url: '{{ url_for('data_models.add') }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({table_name: tableName, data_source_id: dataSourceId}),
+                success: function(response) {
+                    console.log('[DEBUG] 字段响应:', response);
+                    var fieldsContainer = $('#fields-container');
+                    fieldsContainer.empty();
+                    
+                    if (response.fields && Array.isArray(response.fields) && response.fields.length > 0) {
+                        // 使用 flex 布局显示字段
+                        var fieldsWrapper = $('<div class="d-flex flex-wrap gap-2">');
+                        response.fields.forEach(function(field) {
+                            var fieldId = 'field_' + field.replace(/[^a-zA-Z0-9]/g, '_');
+                            var fieldDiv = $('<div class="custom-control custom-checkbox mr-3 mb-2">');
+                            var input = $('<input type="checkbox" class="custom-control-input" name="fields" value="' + field + '" id="' + fieldId + '" checked>');
+                            var label = $('<label class="custom-control-label" for="' + fieldId + '">' + field + '</label>');
+                            fieldDiv.append(input).append(label);
+                            fieldsWrapper.append(fieldDiv);
+                        });
+                        fieldsContainer.append(fieldsWrapper);
+                        console.log('[DEBUG] 已加载 ' + response.fields.length + ' 个字段');
+                    } else {
+                        console.log('[DEBUG] 字段为空或格式错误:', response);
+                        fieldsContainer.html('<div class="text-center text-muted py-3">该表没有字段 (调试: fields=' + JSON.stringify(response.fields) + ')</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('[ERROR] 加载字段失败:', status, error);
+                    $('#fields-container').html('<div class="text-center text-danger py-3"><i class="fas fa-exclamation-circle mr-2"></i>加载字段失败: ' + error + '</div>');
+                }
+            });
+            
+            // 加载数据预览
+            $('#data-preview').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>');
+            $.ajax({
+                url: '/data_models/preview_data',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({table_name: tableName, data_source_id: dataSourceId}),
+                success: function(response) {
+                    console.log('[DEBUG] 数据预览响应:', response);
+                    var dataPreview = $('#data-preview');
+                    if (response.error) {
+                        dataPreview.html('<div class="text-center text-danger py-3"><i class="fas fa-exclamation-circle mr-2"></i>错误: ' + response.error + '</div>');
+                    } else if (response && Array.isArray(response.data) && response.data.length > 0) {
+                        var table = $('<table class="table table-sm table-bordered table-hover mb-0">');
+                        var thead = $('<thead class="thead-light"><tr>');
+                        Object.keys(response.data[0]).forEach(function(key) {
+                            thead.append($('<th>').text(key));
+                        });
+                        thead.append('</tr></thead>');
+                        table.append(thead);
+                        
+                        var tbody = $('<tbody>');
+                        response.data.forEach(function(row) {
+                            var tr = $('<tr>');
+                            Object.values(row).forEach(function(value) {
+                                tr.append($('<td>').text(value !== null ? value : ''));
+                            });
+                            tbody.append(tr);
+                        });
+                        table.append(tbody);
+                        dataPreview.html(table);
+                    } else {
+                        dataPreview.html('<div class="text-center text-muted py-3">暂无数据 (调试: data=' + JSON.stringify(response.data) + ')</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('[ERROR] 数据预览失败:', status, error, xhr.responseText);
+                    $('#data-preview').html('<div class="text-center text-danger py-3"><i class="fas fa-exclamation-circle mr-2"></i>加载失败: ' + error + '</div>');
+                }
+            });
+        }
+    });
+    
+    // 页面加载时触发
+    $(document).ready(function() {
+        $('#data_source_id').trigger('change');
+    });
+</script>
+{% endblock %}

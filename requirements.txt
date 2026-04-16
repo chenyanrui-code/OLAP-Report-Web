@@ -1,0 +1,13 @@
+Flask
+Dash
+Plotly
+SQLAlchemy
+Flask-Login
+Flask-WTF
+Passlib
+psycopg2-binary
+pymysql
+openpyxl
+pandas
+Flask-SQLAlchemy
+Werkzeug==2.0.3

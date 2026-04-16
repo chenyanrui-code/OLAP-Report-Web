@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}用户管理 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('users.index') }}">用户管理</a></li>
+<li class="breadcrumb-item active">列表</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="page-title mb-1">用户管理</h3>
+        <p class="page-subtitle mb-0">管理系统用户账户</p>
+    </div>
+    <a href="{{ url_for('users.add') }}" class="btn btn-primary">
+        <i class="fas fa-plus mr-2"></i>添加用户
+    </a>
+</div>
+
+{% if users %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>数据源</th>
+                        <th>数据模型</th>
+                        <th>仪表盘</th>
+                        <th style="width: 150px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="icon-circle bg-primary mr-3">
+                                    <span class="text-white font-weight-bold">{{ user.username[0]|upper }}</span>
+                                </div>
+                                <div>
+                                    <div class="font-weight-bold">{{ user.username }}</div>
+                                    <div>
+                                        {% if user.is_admin %}
+                                            <span class="badge badge-danger">管理员</span>
+                                        {% endif %}
+                                        {% if user.id == current_user.id %}
+                                            <span class="badge badge-success">当前用户</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <i class="fas fa-envelope text-muted mr-2"></i>{{ user.email }}
+                        </td>
+                        <td>
+                            <span class="badge badge-primary">{{ user.data_sources|length }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-success">{{ user.data_models|length }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-info">{{ user.dashboards|length }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-sm btn-outline-primary action-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <a href="{{ url_for('users.delete', id=user.id) }}" class="btn btn-sm btn-outline-danger action-btn" title="删除" onclick="return confirm('确定要删除此用户吗？删除后无法恢复！');">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {% else %}
+                            <span class="btn btn-sm btn-outline-secondary action-btn disabled" title="不能删除当前用户">
+                                <i class="fas fa-trash"></i>
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h5>暂无用户</h5>
+            <p class="text-muted">点击上方按钮添加新用户</p>
+            <a href="{{ url_for('users.add') }}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>添加用户
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

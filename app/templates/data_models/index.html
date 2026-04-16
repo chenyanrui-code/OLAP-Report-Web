@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}数据模型管理 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('data_models.index') }}">数据模型管理</a></li>
+<li class="breadcrumb-item active">列表</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="page-title mb-1">数据模型管理</h3>
+        <p class="page-subtitle mb-0">基于数据源创建虚拟数据集</p>
+    </div>
+    <a href="{{ url_for('data_models.add') }}" class="btn btn-success">
+        <i class="fas fa-plus mr-2"></i>添加数据模型
+    </a>
+</div>
+
+{% if models %}
+<div class="row">
+    {% for model in models %}
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-table mr-2"></i>{{ model.name }}
+                    </h6>
+                    <span class="badge badge-info">{{ model.data_source.name }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">表名</small>
+                    <div class="font-weight-bold">{{ model.table_name }}</div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">字段</small>
+                    <div class="field-list" data-model-id="{{ model.id }}" data-fields='{{ model.fields|default("[]")|safe }}'>
+                        <span class="text-muted">加载中...</span>
+                    </div>
+                </div>
+                <div>
+                    <small class="text-muted">创建时间</small>
+                    <div class="small">{{ model.created_at.strftime('%Y-%m-%d %H:%M') if model.created_at else '-' }}</div>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex justify-content-end">
+                    <a href="{{ url_for('data_models.edit', id=model.id) }}" class="btn btn-sm btn-outline-primary mr-2">
+                        <i class="fas fa-edit mr-1"></i>编辑
+                    </a>
+                    <a href="{{ url_for('data_models.delete', id=model.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除此数据模型吗？');">
+                        <i class="fas fa-trash mr-1"></i>删除
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="fas fa-table"></i>
+            <h5>暂无数据模型</h5>
+            <p class="text-muted">点击上方按钮创建您的第一个数据模型</p>
+            <a href="{{ url_for('data_models.add') }}" class="btn btn-success">
+                <i class="fas fa-plus mr-2"></i>添加数据模型
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 解析并显示字段
+        $('.field-list').each(function() {
+            var $container = $(this);
+            var fieldsStr = $container.attr('data-fields') || '[]';
+            var modelId = $container.data('model-id');
+            $container.empty();
+            
+            console.log('[DEBUG] Model ' + modelId + ' fields string:', fieldsStr);
+            
+            try {
+                var fields = JSON.parse(fieldsStr);
+                console.log('[DEBUG] Model ' + modelId + ' parsed fields:', fields);
+                
+                if (fields && Array.isArray(fields) && fields.length > 0) {
+                    fields.slice(0, 5).forEach(function(field) {
+                        $container.append('<span class="badge badge-secondary mr-1 mb-1">' + field + '</span>');
+                    });
+                    if (fields.length > 5) {
+                        $container.append('<span class="badge badge-light">+' + (fields.length - 5) + ' 更多</span>');
+                    }
+                } else {
+                    $container.html('<span class="text-muted">暂无字段</span>');
+                }
+            } catch(e) {
+                console.error('[ERROR] Model ' + modelId + ' parse error:', e, 'string was:', fieldsStr);
+                $container.html('<span class="text-muted">暂无字段</span>');
+            }
+        });
+    });
+</script>
+{% endblock %}

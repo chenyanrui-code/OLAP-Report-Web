@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}首页 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">首页</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="page-title">欢迎回来，{{ current_user.username }}</h3>
+        <p class="page-subtitle">开始您的数据可视化之旅</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card primary">
+            <div class="card-body position-relative">
+                <div class="stat-value">{{ data_sources_count|default(0) }}</div>
+                <div class="stat-label">数据源</div>
+                <i class="fas fa-database stat-icon text-primary"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card success">
+            <div class="card-body position-relative">
+                <div class="stat-value">{{ data_models_count|default(0) }}</div>
+                <div class="stat-label">数据模型</div>
+                <i class="fas fa-table stat-icon text-success"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card info">
+            <div class="card-body position-relative">
+                <div class="stat-value">{{ dashboards_count|default(0) }}</div>
+                <div class="stat-label">仪表盘</div>
+                <i class="fas fa-tachometer-alt stat-icon text-info"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card warning">
+            <div class="card-body position-relative">
+                <div class="stat-value">{{ charts_count|default(0) }}</div>
+                <div class="stat-label">图表</div>
+                <i class="fas fa-chart-bar stat-icon text-warning"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-rocket mr-2"></i>快速开始</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-database fa-2x text-primary mb-3"></i>
+                                <h5>添加数据源</h5>
+                                <p class="text-muted small mb-3">连接MySQL、PostgreSQL或Excel数据源</p>
+                                <a href="{{ url_for('data_sources.add') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus mr-1"></i>添加
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-table fa-2x text-success mb-3"></i>
+                                <h5>创建数据模型</h5>
+                                <p class="text-muted small mb-3">基于数据源创建虚拟数据集</p>
+                                <a href="{{ url_for('data_models.add') }}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus mr-1"></i>创建
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-tachometer-alt fa-2x text-info mb-3"></i>
+                                <h5>创建仪表盘</h5>
+                                <p class="text-muted small mb-3">设计数据可视化仪表盘</p>
+                                <a href="{{ url_for('dashboards.add') }}" class="btn btn-info btn-sm text-white">
+                                    <i class="fas fa-plus mr-1"></i>创建
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-chart-pie fa-2x text-warning mb-3"></i>
+                                <h5>添加图表</h5>
+                                <p class="text-muted small mb-3">在仪表盘中添加可视化图表</p>
+                                <a href="{{ url_for('dashboards.index') }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-plus mr-1"></i>添加
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-clock mr-2"></i>最近活动</h6>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-database text-primary mr-2"></i>
+                            创建了新的数据源
+                        </div>
+                        <span class="badge badge-light">今天</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-table text-success mr-2"></i>
+                            创建了新的数据模型
+                        </div>
+                        <span class="badge badge-light">昨天</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-tachometer-alt text-info mr-2"></i>
+                            创建了新的仪表盘
+                        </div>
+                        <span class="badge badge-light">2天前</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-chart-bar text-warning mr-2"></i>
+                            添加了新的图表
+                        </div>
+                        <span class="badge badge-light">3天前</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6><i class="fas fa-lightbulb mr-2"></i>使用提示</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success mr-2"></i>
+                        支持MySQL、PostgreSQL数据库
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success mr-2"></i>
+                        支持Excel文件导入
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success mr-2"></i>
+                        多种图表类型可选
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check-circle text-success mr-2"></i>
+                        仪表盘自由布局
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

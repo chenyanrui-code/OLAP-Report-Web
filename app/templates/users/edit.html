@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}编辑用户 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('users.index') }}">用户管理</a></li>
+<li class="breadcrumb-item active">编辑</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-user-edit mr-2"></i>编辑用户</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="">
+                    <div class="form-group">
+                        <label for="username">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required maxlength="20">
+                        <small class="form-text text-muted">用户名最多20个字符</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">邮箱 <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">新密码</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" placeholder="留空则不修改密码">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">如需修改密码请输入新密码，否则留空</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm_password">确认新密码</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="请再次输入新密码">
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="is_admin" name="is_admin" {% if user.is_admin %}checked{% endif %}>
+                            <label class="custom-control-label" for="is_admin">设为管理员</label>
+                        </div>
+                        <small class="form-text text-muted">管理员可以管理所有用户</small>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('users.index') }}" class="btn btn-secondary mr-2">
+                            <i class="fas fa-times mr-2"></i>取消
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check mr-2"></i>保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle mr-2"></i>用户统计</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-right">
+                            <h4 class="text-primary">{{ user.data_sources|length }}</h4>
+                            <small class="text-muted">数据源</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-right">
+                            <h4 class="text-success">{{ user.data_models|length }}</h4>
+                            <small class="text-muted">数据模型</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-info">{{ user.dashboards|length }}</h4>
+                        <small class="text-muted">仪表盘</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 切换密码显示
+        $('#togglePassword').click(function() {
+            var passwordInput = $('#password');
+            var icon = $(this).find('i');
+            
+            if (passwordInput.attr('type') === 'password') {
+                passwordInput.attr('type', 'text');
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                passwordInput.attr('type', 'password');
+                icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            }
+        });
+        
+        // 验证密码匹配
+        $('form').submit(function(e) {
+            var password = $('#password').val();
+            var confirmPassword = $('#confirm_password').val();
+            
+            if (password && password !== confirmPassword) {
+                e.preventDefault();
+                alert('两次输入的密码不一致，请重新输入！');
+                return false;
+            }
+        });
+        
+        // 检查用户名是否已存在
+        $('#username').blur(function() {
+            var username = $(this).val();
+            if (username.length > 0) {
+                $.get('{{ url_for('users.check_username') }}', { username: username, user_id: {{ user.id }} }, function(data) {
+                    if (data.exists) {
+                        $('#username').addClass('is-invalid');
+                        if ($('#username-error').length === 0) {
+                            $('#username').after('<div class="invalid-feedback d-block" id="username-error">用户名已存在</div>');
+                        }
+                    } else {
+                        $('#username').removeClass('is-invalid');
+                        $('#username-error').remove();
+                    }
+                });
+            }
+        });
+        
+        // 检查邮箱是否已存在
+        $('#email').blur(function() {
+            var email = $(this).val();
+            if (email.length > 0) {
+                $.get('{{ url_for('users.check_email') }}', { email: email, user_id: {{ user.id }} }, function(data) {
+                    if (data.exists) {
+                        $('#email').addClass('is-invalid');
+                        if ($('#email-error').length === 0) {
+                            $('#email').after('<div class="invalid-feedback d-block" id="email-error">邮箱已被注册</div>');
+                        }
+                    } else {
+                        $('#email').removeClass('is-invalid');
+                        $('#email-error').remove();
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}个人设置 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">个人设置</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-user mr-2"></i>基本信息</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="">
+                    <input type="hidden" name="action" value="update_profile">
+                    
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" class="form-control" name="username" value="{{ current_user.username }}" required maxlength="20">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" class="form-control" name="email" value="{{ current_user.email }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>账户类型</label>
+                        <input type="text" class="form-control" value="{% if current_user.is_admin %}管理员{% else %}普通用户{% endif %}" disabled>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>保存修改
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-lock mr-2"></i>修改密码</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="">
+                    <input type="hidden" name="action" value="change_password">
+                    
+                    <div class="form-group">
+                        <label>原密码</label>
+                        <input type="password" class="form-control" name="old_password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>新密码</label>
+                        <input type="password" class="form-control" name="new_password" required minlength="6">
+                        <small class="form-text text-muted">密码长度至少6位</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>确认新密码</label>
+                        <input type="password" class="form-control" name="confirm_password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-key mr-2"></i>修改密码
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-bar mr-2"></i>账户统计</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-right">
+                            <h4 class="text-primary">{{ current_user.data_sources|length }}</h4>
+                            <small class="text-muted">数据源</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-right">
+                            <h4 class="text-success">{{ current_user.data_models|length }}</h4>
+                            <small class="text-muted">数据模型</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-info">{{ current_user.dashboards|length }}</h4>
+                        <small class="text-muted">仪表盘</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

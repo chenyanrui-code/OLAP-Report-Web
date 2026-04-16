@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - 多维数据实时分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">编辑数据模型</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.name.label(class="form-control-label") }}
+                {{ form.name(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.data_source_id.label(class="form-control-label") }}
+                {{ form.data_source_id(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.table_name.label(class="form-control-label") }}
+                {{ form.table_name(class="form-control") }}
+            </div>
+            <div class="form-group">
+                <label>数据预览</label>
+                <div id="data-preview" style="border: 1px solid #ddd; padding: 10px; max-height: 300px; overflow-y: auto;">
+                    <!-- 数据预览将通过AJAX动态加载 -->
+                    选择表名后将显示数据预览
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form.fields.label(class="form-control-label") }}
+                <div id="fields-container" style="display: none;">
+                    <!-- 字段将通过AJAX动态加载 -->
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('data_models.index') }}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // 当数据源变化时，加载表名
+        $('#data_source_id').on('change', function() {
+            var dataSourceId = $(this).val();
+            if (dataSourceId) {
+                $.ajax({
+                    url: '{{ url_for('data_models.edit', id=model.id) }}',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({data_source_id: dataSourceId}),
+                    success: function(response) {
+                        var tableSelect = $('#table_name');
+                        tableSelect.empty();
+                        response.tables.forEach(function(table) {
+                            tableSelect.append($('<option>').text(table).val(table));
+                        });
+                        // 触发表名变化，加载字段
+                        $('#table_name').trigger('change');
+                    }
+                });
+            }
+        });
+        
+        // 当表名变化时，加载字段和数据预览
+        $('#table_name').on('change', function() {
+            var tableName = $(this).val();
+            var dataSourceId = $('#data_source_id').val();
+            if (tableName && dataSourceId) {
+                // 显示加载中
+                $('#data-preview').html('加载中...');
+                
+                // 加载字段
+                $.ajax({
+                    url: '{{ url_for('data_models.edit', id=model.id) }}',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({table_name: tableName, data_source_id: dataSourceId}),
+                    success: function(response) {
+                        // 加载字段
+                        var fieldsContainer = $('#fields-container');
+                        fieldsContainer.empty();
+                        if (response.fields && Array.isArray(response.fields)) {
+                            response.fields.forEach(function(field) {
+                                var fieldDiv = $('<div class="form-check">');
+                                var input = $('<input type="checkbox" class="form-check-input" name="fields" value="' + field + '">');
+                                var label = $('<label class="form-check-label">' + field + '</label>');
+                                fieldDiv.append(input).append(label);
+                                fieldsContainer.append(fieldDiv);
+                            });
+                        }
+                        
+                        // 加载数据预览
+                        $.ajax({
+                            url: '/data_models/preview_data',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({table_name: tableName, data_source_id: dataSourceId}),
+                            success: function(previewResponse) {
+                                console.log('数据预览响应:', previewResponse);
+                                var dataPreview = $('#data-preview');
+                                
+                                // 检查响应数据结构
+                                if (previewResponse && Array.isArray(previewResponse.data) && previewResponse.data.length > 0) {
+                                    try {
+                                        // 生成表格
+                                        var table = $('<table class="table table-bordered table-sm">');
+                                        
+                                        // 生成表头
+                                        var thead = $('<thead><tr>');
+                                        Object.keys(previewResponse.data[0]).forEach(function(key) {
+                                            thead.append($('<th>').text(key));
+                                        });
+                                        thead.append('</tr></thead>');
+                                        table.append(thead);
+                                        
+                                        // 生成表体
+                                        var tbody = $('<tbody>');
+                                        previewResponse.data.forEach(function(row) {
+                                            var tr = $('<tr>');
+                                            Object.values(row).forEach(function(value) {
+                                                tr.append($('<td>').text(value));
+                                            });
+                                            tbody.append(tr);
+                                        });
+                                        table.append(tbody);
+                                        
+                                        dataPreview.html(table);
+                                    } catch (error) {
+                                        console.log('生成表格时出错:', error);
+                                        dataPreview.html('数据格式错误');
+                                    }
+                                } else {
+                                    console.log('无数据或数据格式错误:', previewResponse);
+                                    dataPreview.html('暂无数据');
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.log('数据预览错误:', status, error);
+                                $('#data-preview').html('加载数据预览失败');
+                            }
+                        });
+                    },
+                    error: function() {
+                        $('#data-preview').html('加载失败');
+                    }
+                });
+            }
+        });
+        
+        // 页面加载时触发数据源变化，加载初始表名和字段
+        $(document).ready(function() {
+            $('#data_source_id').trigger('change');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}添加数据源 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('data_sources.index') }}">数据源管理</a></li>
+<li class="breadcrumb-item active">添加</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-plus-circle mr-2"></i>添加数据源</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.name.label.text }}</label>
+                                {{ form.name(class="form-control", placeholder="请输入数据源名称") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.type.label.text }}</label>
+                                {{ form.type(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="db-fields">
+                        <hr class="my-4">
+                        <h6 class="text-muted mb-3"><i class="fas fa-server mr-2"></i>数据库连接信息</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label>{{ form.host.label.text }}</label>
+                                    {{ form.host(class="form-control", placeholder="例如: localhost") }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{ form.port.label.text }}</label>
+                                    {{ form.port(class="form-control", placeholder="例如: 3306") }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>{{ form.username.label.text }}</label>
+                                    {{ form.username(class="form-control", placeholder="数据库用户名") }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>{{ form.password.label.text }}</label>
+                                    {{ form.password(class="form-control", placeholder="数据库密码") }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>{{ form.database.label.text }}</label>
+                            {{ form.database(class="form-control", placeholder="数据库名称") }}
+                        </div>
+                    </div>
+                    
+                    <div id="excel-fields" style="display: none;">
+                        <hr class="my-4">
+                        <h6 class="text-muted mb-3"><i class="fas fa-file-excel mr-2"></i>Excel文件</h6>
+                        
+                        <div class="form-group">
+                            <label>选择Excel文件</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="file" name="file" accept=".xlsx,.xls">
+                                <label class="custom-file-label" for="file">选择文件...</label>
+                            </div>
+                            <small class="text-muted">支持 .xlsx 和 .xls 格式</small>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('data_sources.index') }}" class="btn btn-secondary mr-2">
+                            <i class="fas fa-times mr-2"></i>取消
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 类型切换
+    $('#type').on('change', function() {
+        var dbFields = $('#db-fields');
+        var excelFields = $('#excel-fields');
+        if ($(this).val() === 'excel') {
+            dbFields.slideUp();
+            excelFields.slideDown();
+        } else {
+            dbFields.slideDown();
+            excelFields.slideUp();
+        }
+    });
+    
+    // 文件选择显示文件名
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName || '选择文件...');
+    });
+</script>
+{% endblock %}

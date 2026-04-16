@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}添加图表 - 多维数据实时分析系统{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboards.index') }}">仪表盘管理</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('dashboards.edit', id=dashboard_id) }}">编辑仪表盘</a></li>
+<li class="breadcrumb-item active">添加图表</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-plus-circle mr-2"></i>添加图表</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('charts.add', dashboard_id=dashboard_id) }}" id="chartForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.name.label.text }}</label>
+                                {{ form.name(class="form-control", placeholder="请输入图表名称") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.type.label.text }}</label>
+                                {{ form.type(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>{{ form.data_model_id.label.text }}</label>
+                        {{ form.data_model_id(class="form-control") }}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.dimensions.label.text }}</label>
+                                <div id="dimensions-container" class="border rounded p-3" style="min-height: 100px; background: #f8f9fc;">
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-info-circle mr-2"></i>请先选择数据模型
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>{{ form.metrics.label.text }}</label>
+                                <div id="metrics-container" class="border rounded p-3" style="min-height: 100px; background: #f8f9fc;">
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-info-circle mr-2"></i>请先选择数据模型
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('dashboards.edit', id=dashboard_id) }}" class="btn btn-secondary mr-2">
+                            <i class="fas fa-times mr-2"></i>取消
+                        </a>
+                        <button type="submit" class="btn btn-warning" onclick="console.log('保存按钮被点击'); return true;">
+                            <i class="fas fa-save mr-2"></i>保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-eye mr-2"></i>图表预览</h6>
+            </div>
+            <div class="card-body">
+                <div id="chart-preview" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-chart-bar fa-3x mb-3" style="opacity: 0.3;"></i>
+                        <p>选择数据模型和字段后显示预览</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script>
+    $(document).ready(function() {
+        // 加载字段
+        $('#data_model_id').on('change', function() {
+            var dataModelId = $(this).val();
+            if (dataModelId) {
+                $('#dimensions-container').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> 加载字段中...</div>');
+                $('#metrics-container').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> 加载字段中...</div>');
+                
+                $.ajax({
+                    url: '{{ url_for('charts.add', dashboard_id=dashboard_id) }}',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({data_model_id: parseInt(dataModelId)}),
+                    success: function(response) {
+                        var dimensionsContainer = $('#dimensions-container');
+                        var metricsContainer = $('#metrics-container');
+                        dimensionsContainer.empty();
+                        metricsContainer.empty();
+                        
+                        if (response.fields && Array.isArray(response.fields) && response.fields.length > 0) {
+                            response.fields.forEach(function(field) {
+                                var fieldId = field.replace(/[^a-zA-Z0-9]/g, '_');
+                                // 维度选项
+                                var dimDiv = $('<div class="custom-control custom-checkbox mb-2">');
+                                var dimInput = $('<input type="checkbox" class="custom-control-input" name="dimensions" value="' + field + '" id="dim_' + fieldId + '">');
+                                var dimLabel = $('<label class="custom-control-label" for="dim_' + fieldId + '">' + field + '</label>');
+                                dimDiv.append(dimInput).append(dimLabel);
+                                dimensionsContainer.append(dimDiv);
+                                
+                                // 指标选项
+                                var metDiv = $('<div class="custom-control custom-checkbox mb-2">');
+                                var metInput = $('<input type="checkbox" class="custom-control-input" name="metrics" value="' + field + '" id="met_' + fieldId + '">');
+                                var metLabel = $('<label class="custom-control-label" for="met_' + fieldId + '">' + field + '</label>');
+                                metDiv.append(metInput).append(metLabel);
+                                metricsContainer.append(metDiv);
+                            });
+                        } else {
+                            dimensionsContainer.html('<div class="text-center text-muted py-3">暂无字段</div>');
+                            metricsContainer.html('<div class="text-center text-muted py-3">暂无字段</div>');
+                        }
+                    }
+                });
+            }
+        });
+        
+        // 初始化加载
+        if ($('#data_model_id').val()) {
+            $('#data_model_id').trigger('change');
+        }
+        
+        // 绑定维度、指标变化事件，更新预览
+        $(document).on('change', 'input[name="dimensions"], input[name="metrics"], #type', function() {
+            updatePreview();
+        });
+    });
+    
+    var previewChart = null;
+    
+    function updatePreview() {
+        var chartType = $('#type').val();
+        var dataModelId = $('#data_model_id').val();
+        var dimensions = $('input[name="dimensions"]:checked').map(function() { return $(this).val(); }).get();
+        var metrics = $('input[name="metrics"]:checked').map(function() { return $(this).val(); }).get();
+        
+        if (dataModelId && (dimensions.length > 0 || metrics.length > 0)) {
+            $.ajax({
+                url: '{{ url_for('charts.preview') }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    type: chartType,
+                    data_model_id: dataModelId,
+                    dimensions: dimensions,
+                    metrics: metrics
+                }),
+                success: function(response) {
+                    if (response.chart_config) {
+                        renderChart(response.chart_config);
+                    }
+                }
+            });
+        }
+    }
+    
+    function renderChart(config) {
+        var ctx = document.createElement('canvas');
+        var previewContainer = $('#chart-preview');
+        previewContainer.empty().append(ctx);
+        
+        if (previewChart) {
+            previewChart.destroy();
+        }
+        
+        previewChart = new Chart(ctx, config);
+    }
+</script>
+{% endblock %}

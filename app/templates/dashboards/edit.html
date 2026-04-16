@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}编辑仪表盘 - 多维数据实时分析系统{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jqueryui/css/jquery-ui.min.css') }}">
+<style>
+    .dashboard-toolbar {
+        background: white;
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .dashboard-container {
+        background: white;
+        border-radius: 10px;
+        min-height: 600px;
+        position: relative;
+        border: 2px dashed #e3e6f0;
+    }
+    
+    .chart-item {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.1);
+        cursor: move;
+        position: absolute;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-item:hover {
+        box-shadow: 0 0.5rem 2rem 0 rgba(58,59,69,.2);
+    }
+    
+    .chart-item .chart-header {
+        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+        color: white;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .chart-item .chart-header h6 {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .chart-item .chart-header .btn {
+        padding: 2px 8px;
+        font-size: 0.75rem;
+    }
+    
+    .chart-item .chart-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fc;
+        padding: 10px;
+        min-height: 0;
+    }
+    
+    .chart-item .chart-content canvas {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    .add-chart-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 1.5rem;
+        box-shadow: 0 5px 20px rgba(78,115,223,.4);
+    }
+    
+    .empty-dashboard {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #858796;
+    }
+    
+    .empty-dashboard i {
+        font-size: 4rem;
+        opacity: 0.3;
+        margin-bottom: 20px;
+    }
+    
+    .ui-resizable-handle {
+        z-index: 90;
+    }
+    
+    .save-status {
+        font-size: 0.85rem;
+        color: #858796;
+    }
+    
+    .save-status.saved {
+        color: #1cc88a;
+    }
+    
+    .save-status.saving {
+        color: #f6c23e;
+    }
+    
+    .preview-mode .chart-item {
+        cursor: default;
+    }
+    
+    .preview-mode .chart-header {
+        display: none;
+    }
+    
+    .preview-mode .chart-content {
+        background: white;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboards.index') }}">仪表盘管理</a></li>
+<li class="breadcrumb-item active">{{ dashboard.name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-toolbar">
+    <div>
+        <h4 class="mb-1">{{ dashboard.name }}</h4>
+        <span class="save-status" id="saveStatus">
+            <i class="fas fa-check-circle mr-1"></i>已保存
+        </span>
+    </div>
+    <div>
+        <button class="btn btn-outline-info mr-2" id="previewBtn">
+            <i class="fas fa-eye mr-2"></i>预览
+        </button>
+        <button class="btn btn-success mr-2" id="saveBtn">
+            <i class="fas fa-save mr-2"></i>保存布局
+        </button>
+        <a href="{{ url_for('dashboards.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>返回
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-2">
+        <div class="dashboard-container" id="dashboard">
+            <div class="empty-dashboard" id="empty-state">
+                <i class="fas fa-chart-area"></i>
+                <h5>暂无图表</h5>
+                <p>点击右下角按钮添加图表</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="btn btn-primary add-chart-btn" id="addChartBtn" title="添加图表">
+    <i class="fas fa-plus"></i>
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='vendor/jqueryui/js/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script>
+    var charts = {};
+    var isPreviewMode = false;
+    
+    $(document).ready(function() {
+        loadCharts();
+        
+        $('#addChartBtn').click(function() {
+            window.location.href = '{{ url_for('charts.add', dashboard_id=dashboard.id) }}';
+        });
+        
+        $('#saveBtn').click(function() {
+            saveLayout(true);
+        });
+        
+        $('#previewBtn').click(function() {
+            togglePreviewMode();
+        });
+        
+        // 自动保存（每30秒）
+        setInterval(function() {
+            saveLayout(false);
+        }, 30000);
+    });
+    
+    function loadCharts() {
+        $.ajax({
+            url: '{{ url_for('dashboards.get_charts', id=dashboard.id) }}',
+            type: 'GET',
+            success: function(response) {
+                if (response.charts && response.charts.length > 0) {
+                    $('#empty-state').hide();
+                    response.charts.forEach(function(chart) {
+                        addChart(chart);
+                    });
+                }
+            }
+        });
+    }
+    
+    function addChart(chart) {
+        $('#empty-state').hide();
+        
+        var chartHtml = `
+            <div class="chart-item" data-chart-id="${chart.id}" id="chart-container-${chart.id}"
+                 style="left: ${chart.x || 10}px; top: ${chart.y || 10}px; width: ${chart.width || 400}px; height: ${chart.height || 300}px;">
+                <div class="chart-header">
+                    <h6><i class="fas fa-chart-${getChartIcon(chart.type)} mr-2"></i>${chart.name}</h6>
+                    <div>
+                        <button class="btn btn-light btn-sm edit-chart mr-1" data-chart-id="${chart.id}" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-light btn-sm refresh-chart mr-1" data-chart-id="${chart.id}" title="刷新数据">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn btn-light btn-sm delete-chart" data-chart-id="${chart.id}" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-content" id="chart-content-${chart.id}">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                        <p class="mb-0">加载中...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#dashboard').append(chartHtml);
+        
+        // 加载图表数据
+        loadChartData(chart.id);
+        
+        // 绑定事件
+        $('.edit-chart[data-chart-id="' + chart.id + '"]').click(function(e) {
+            e.stopPropagation();
+            window.location.href = '/charts/edit/' + chart.id;
+        });
+        
+        $('.refresh-chart[data-chart-id="' + chart.id + '"]').click(function(e) {
+            e.stopPropagation();
+            loadChartData(chart.id);
+        });
+        
+        $('.delete-chart[data-chart-id="' + chart.id + '"]').click(function(e) {
+            e.stopPropagation();
+            if (confirm('确定要删除这个图表吗？')) {
+                window.location.href = '/charts/delete/' + chart.id;
+            }
+        });
+        
+        makeDraggable();
+    }
+    
+    function loadChartData(chartId) {
+        var container = $('#chart-content-' + chartId);
+        container.html('<div class="text-center text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p class="mb-0">加载中...</p></div>');
+        
+        $.ajax({
+            url: '/charts/data/' + chartId,
+            type: 'GET',
+            success: function(response) {
+                if (response.chart_config) {
+                    renderChart(chartId, response.chart_config);
+                } else if (response.error) {
+                    container.html('<div class="text-center text-danger"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><p class="mb-0">' + response.error + '</p></div>');
+                }
+            },
+            error: function() {
+                container.html('<div class="text-center text-danger"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><p class="mb-0">加载失败</p></div>');
+            }
+        });
+    }
+    
+    function renderChart(chartId, config) {
+        var container = $('#chart-content-' + chartId);
+        container.empty();
+        
+        var canvas = $('<canvas id="chart-' + chartId + '"></canvas>');
+        container.append(canvas);
+        
+        // 销毁旧图表
+        if (charts[chartId]) {
+            charts[chartId].destroy();
+        }
+        
+        // 创建新图表
+        charts[chartId] = new Chart(canvas, config);
+    }
+    
+    function getChartIcon(type) {
+        var icons = {
+            'bar': 'bar',
+            'line': 'line',
+            'pie': 'pie',
+            'doughnut': 'pie',
+            'area': 'area',
+            'scatter': 'scatter'
+        };
+        return icons[type] || 'bar';
+    }
+    
+    function makeDraggable() {
+        $('.chart-item').draggable({
+            containment: '#dashboard',
+            stop: function() {
+                saveLayout(false);
+            }
+        }).resizable({
+            containment: '#dashboard',
+            handles: 'se, sw, ne, nw',
+            stop: function() {
+                saveLayout(false);
+                // 调整图表大小后重新渲染
+                var chartId = $(this).data('chart-id');
+                if (charts[chartId]) {
+                    charts[chartId].resize();
+                }
+            }
+        });
+    }
+    
+    function saveLayout(showMessage) {
+        var layout = [];
+        $('.chart-item').each(function() {
+            var $this = $(this);
+            layout.push({
+                id: $this.data('chart-id'),
+                x: parseInt($this.css('left')),
+                y: parseInt($this.css('top')),
+                width: $this.width(),
+                height: $this.height()
+            });
+        });
+        
+        $('#saveStatus').html('<i class="fas fa-spinner fa-spin mr-1"></i>保存中...').removeClass('saved').addClass('saving');
+        
+        $.ajax({
+            url: '{{ url_for('dashboards.save_layout', id=dashboard.id) }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ layout: layout }),
+            success: function(response) {
+                if (response.success) {
+                    $('#saveStatus').html('<i class="fas fa-check-circle mr-1"></i>已保存').removeClass('saving').addClass('saved');
+                    if (showMessage) {
+                        alert('布局保存成功！');
+                    }
+                }
+            }
+        });
+    }
+    
+    function togglePreviewMode() {
+        isPreviewMode = !isPreviewMode;
+        
+        if (isPreviewMode) {
+            $('#dashboard').addClass('preview-mode');
+            $('#previewBtn').html('<i class="fas fa-edit mr-2"></i>编辑').removeClass('btn-outline-info').addClass('btn-info');
+            $('.add-chart-btn').hide();
+            
+            // 重新调整图表大小
+            Object.keys(charts).forEach(function(chartId) {
+                if (charts[chartId]) {
+                    charts[chartId].resize();
+                }
+            });
+        } else {
+            $('#dashboard').removeClass('preview-mode');
+            $('#previewBtn').html('<i class="fas fa-eye mr-2"></i>预览').removeClass('btn-info').addClass('btn-outline-info');
+            $('.add-chart-btn').show();
+        }
+    }
+</script>
+{% endblock %}
